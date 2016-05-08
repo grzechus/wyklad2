@@ -1,0 +1,178 @@
+alter session set NLS_DATE_FORMAT='DD.MM.YYYY';
+
+zad3
+
+SELECT pseudo_dawcy "Dawca A",
+  rocznik_dawcy "Rocznik"
+FROM Dawcy
+WHERE grupa_krwi = 'A';
+
+zad4
+
+SELECT DISTINCT pseudo_dawcy AS "Dawca"
+FROM Donacje
+WHERE data_oddania BETWEEN '20.07.2005' AND '20.08.2005';
+
+zad5
+
+SELECT COUNT(DISTINCT sprawnosc) AS "Liczba sprawnosci"
+FROM Sprawnosci_w
+WHERE pseudo_wampira IN ('Opoj', 'Czerwony');
+
+zad6
+
+SELECT SUM(ilosc_krwi) AS "Cieple buleczki"
+FROM Donacje
+WHERE data_wydania - data_oddania <= 10;
+
+zad7
+
+SELECT pseudo_wampira AS "Wampir",
+  COUNT(data_wydania) AS "Liczba konsumpcji"
+FROM Donacje
+GROUP BY pseudo_wampira
+HAVING COUNT(data_wydania) > 1;
+
+zad8
+
+SELECT grupa_krwi AS "Grupa",
+  plec_dawcy      AS "Plec",
+  COUNT(*)        AS "Liczba dawcow"
+FROM Dawcy
+GROUP BY grupa_krwi,
+  plec_dawcy
+ORDER BY grupa_krwi,
+  plec_dawcy;
+  
+zad9
+
+SELECT nr_zlecenia "Zlecenie AB"
+FROM Donacje NATURAL JOIN Dawcy
+WHERE grupa_krwi = 'AB'
+ORDER BY nr_zlecenia;
+
+SELECT nr_zlecenia as "Zlecenie AB"
+FROM Dawcy Y,Donacje D
+WHERE Y.pseudo_dawcy=D.pseudo_dawcy
+and grupa_krwi='AB';
+
+zad10
+
+SELECT W.pseudo_wampira "PSEUDO WAMPIRA",
+  W.plec_wampira "PLEC",
+  NVL(W.pseudo_szefa, ' ') "PSEUDO SZEFA",
+  NVL(S.plec_wampira, ' ') "PLEC SZEFA"
+FROM Wampiry W
+LEFT JOIN Wampiry S
+ON W.pseudo_szefa = S.pseudo_wampira
+ORDER BY "PSEUDO SZEFA";
+
+zad11
+
+SELECT pseudo_dawcy "Pseudonim",
+  'Poni¿ej 700' "Pobór"
+FROM Donacje
+GROUP BY pseudo_dawcy
+HAVING SUM(ilosc_krwi) < 700
+UNION ALL
+SELECT pseudo_dawcy "Pseudonim",
+  'Powy¿ej 1000' "Pobór"
+FROM Donacje
+GROUP BY pseudo_dawcy
+HAVING SUM(ilosc_krwi) > 1000
+UNION ALL
+SELECT pseudo_dawcy "Pseudonim",
+  'Miêdzy 700 a 1000' "Pobór"
+FROM Donacje
+GROUP BY pseudo_dawcy
+HAVING SUM(ilosc_krwi) BETWEEN 700 AND 1000
+ORDER BY 1;
+
+zad12
+
+SELECT nr_zlecenia "Zlecenie AB"
+FROM Donacje
+WHERE pseudo_dawcy IN
+  (SELECT pseudo_dawcy FROM Dawcy WHERE grupa_krwi = 'AB')
+ORDER BY nr_zlecenia;
+
+zad13
+
+SELECT ilosc_krwi "Objetosc",
+  pseudo_dawcy "Dawca"
+FROM Donacje D
+WHERE 3 >
+  (SELECT COUNT(DISTINCT ilosc_krwi) FROM Donacje WHERE ilosc_krwi > D.ilosc_krwi)
+ORDER BY ilosc_krwi DESC;
+
+zad14
+
+SELECT plec_wampira "P³eæ",
+  COUNT(*) "Liczba lingwistów"
+FROM Wampiry
+WHERE 1 <
+  (SELECT COUNT(jezyk_obcy)
+  FROM Jezyki_obce_w
+  WHERE Wampiry.pseudo_wampira = pseudo_wampira
+  )
+GROUP BY plec_wampira;
+
+zad15
+
+SELECT d.pseudo_dawcy as "Dawca",
+grupa_krwi as "Grupa",
+Z.pseudo_wampira as "Biorca"
+From donacje d 
+join dawcy b on d.PSEUDO_DAWCY=b.PSEUDO_DAWCY
+join Zlecenia z on z.nr_zlecenia=d.nr_zlecenia
+join jezyki_obce_w j on z.pseudo_wampira=j.pseudo_wampira
+where jezyk_obcy='polski'
+order by 1;
+
+zad16
+
+SELECT pseudo_dawcy "Dawca", rocznik_dawcy "Rocznik" FROM Dawcy WHERE grupa_krwi = '0';
+UPDATE Dawcy D1
+SET rocznik_dawcy =
+  (SELECT DISTINCT(rocznik_dawcy+5)
+  FROM Dawcy D2
+  WHERE D1.pseudo_dawcy = D2.pseudo_dawcy
+  )
+WHERE grupa_krwi = '0';
+SELECT pseudo_dawcy "Dawca", rocznik_dawcy "Rocznik" FROM Dawcy WHERE grupa_krwi = '0';
+ROLLBACK;
+SELECT pseudo_dawcy "Dawca", rocznik_dawcy "Rocznik" FROM Dawcy WHERE grupa_krwi = '0';
+
+zad17
+
+CREATE OR REPLACE VIEW Spozycie AS 
+SELECT DISTINCT pseudo_wampira as "pseudo",
+	SUM(ilosc_krwi) as "spozycie"
+  FROM donacje
+  group by pseudo_wampira
+  having pseudo_wampira != 'Drakula';
+
+select * from spozycie;
+
+zad18
+
+CREATE VIEW Bez_Poboru AS
+SELECT nr_zlecenia AS Zlecenie, pseudo_dawcy AS Wykonawca
+FROM Donacje LEFT JOIN Wampiry USING(pseudo_wampira)
+WHERE data_oddania IS NULL
+AND (pseudo_wampira != 'Drakula' OR pseudo_szefa != 'Drakula');
+
+SELECT * FROM Bez_poboru;
+
+zad19
+
+SELECT 
+    CASE Wampiry.PLEC_WAMPIRA WHEN 'K' THEN 'Wampirki' 
+                              WHEN 'M' THEN 'Wampiry'
+    END "Plec_podwladnych", 
+    SUM(CASE WHEN Wampiry.PSEUDO_SZEFA = 'Drakula' THEN Donacje.ILOSC_KRWI ELSE 0 END) "Pod Drakula", 
+    SUM(CASE WHEN Wampiry.PSEUDO_SZEFA = 'Opoj' THEN Donacje.ILOSC_KRWI ELSE 0 END) "Pod Opojem", 
+    SUM(CASE WHEN Wampiry.PSEUDO_SZEFA = 'Wicek' THEN Donacje.ILOSC_KRWI ELSE 0 END) "Pod Wickiem" 
+FROM Wampiry, Donacje
+WHERE Wampiry.Pseudo_wampira = Donacje.PSEUDO_WAMPIRA
+GROUP BY Wampiry.PLEC_WAMPIRA;
