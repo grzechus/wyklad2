@@ -1,0 +1,2 @@
+# wyklad2
+opis
